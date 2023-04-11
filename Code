@@ -1,177 +1,90 @@
--- Create the customer table
+-- Create customer table
 CREATE TABLE customer (
-id INT PRIMARY KEY,
-name VARCHAR(50),
-email VARCHAR(50)
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255),
+  email VARCHAR(255)
 );
 
--- Create the menu_item table
-CREATE TABLE menu_item (
-id INT PRIMARY KEY,
-name VARCHAR(50),
-description VARCHAR(255),
-price DECIMAL(10, 2)
-);
-
--- Create the order table
-CREATE TABLE order (
-id INT PRIMARY KEY,
-order_date DATE,
-order_type VARCHAR(20),
-customer_id INT,
-employee_id INT,
-FOREIGN KEY (customer_id) REFERENCES customer(id),
-FOREIGN KEY (employee_id) REFERENCES employee(id)
-);
-
--- Create the order_item table
-CREATE TABLE order_item (
-id INT PRIMARY KEY,
-order_id INT,
-menu_item_id INT,
-quantity INT,
-FOREIGN KEY (order_id) REFERENCES order(id),
-FOREIGN KEY (menu_item_id) REFERENCES menu_item(id)
-);
-
--- Create the employee table
+-- Create employee table
 CREATE TABLE employee (
-id INT PRIMARY KEY,
-name VARCHAR(50),
-title VARCHAR(50),
-hire_date DATE
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255),
+  hire_date DATE
 );
 
--- Insert data into the customer table
-INSERT INTO customer (id, name, email) VALUES
-(1, 'John Smith', 'john.smith@example.com'),
-(2, 'Jane Doe', 'jane.doe@example.com'),
-(3, 'Bob Johnson', 'bob.johnson@example.com');
+-- Create menu_item table
+CREATE TABLE menu_item (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255),
+  price DECIMAL(10, 2)
+);
 
--- Insert data into the menu_item table
-INSERT INTO menu_item (id, name, description, price) VALUES
-(1, 'Cheeseburger', 'A classic cheeseburger', 8.99),
-(2, 'French Fries', 'Crispy golden fries', 2.99),
-(3, 'Soft Drink', 'Refreshing soda', 1.99);
+-- Create order_table table
+CREATE TABLE order_table (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  order_date DATE,
+  customer_id INT,
+  employee_id INT,
+  FOREIGN KEY (customer_id) REFERENCES customer(id),
+  FOREIGN KEY (employee_id) REFERENCES employee(id)
+);
 
--- Insert data into the order table
-INSERT INTO order (id, order_date, order_type, customer_id, employee_id) VALUES
-(1, '2022-03-15', 'dine-in', 1, 1),
-(2, '2022-03-16', 'takeout', 2, 2),
-(3, '2022-03-17', 'dine-in', 3, 1),
-(4, '2022-03-18', 'takeout', 1, 3);
+-- Create order_item table
+CREATE TABLE order_item (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  order_id INT,
+  menu_item_id INT,
+  quantity INT,
+  FOREIGN KEY (order_id) REFERENCES order_table(id),
+  FOREIGN KEY (menu_item_id) REFERENCES menu_item(id)
+);
 
--- Insert data into the order_item table
-INSERT INTO order_item (id, order_id, menu_item_id, quantity) VALUES
-(1, 1, 1, 2),
-(2, 1, 2, 1),
-(3, 2, 1, 1),
-(4, 3, 3, 3),
-(5, 4, 1, 2),
-(6, 4, 2, 1);
+-- Select all customers and their orders
+SELECT c.*, o.*
+FROM customer c
+JOIN order_table o ON c.id = o.customer_id;
 
--- Insert data into the employee table
-INSERT INTO employee (id, name, title, hire_date) VALUES
-(1, 'Tom Smith', 'Manager', '2020-01-01'),
-(2, 'Sarah Johnson', 'Server', '2021-05-01'),
-(3, 'Mike Davis', 'Cook', '2021-09-01');
+-- Select all orders with their associated customer and employee information
+SELECT o.*, c.name as customer_name, e.name as employee_name
+FROM order_table o
+JOIN customer c ON o.customer_id = c.id
+JOIN employee e ON o.employee_id = e.id;
 
--- Update the price of the Cheeseburger menu item
-UPDATE menu_item SET price = 9.99 WHERE name = 'Cheeseburger';
+-- Select the total revenue for each order
+SELECT o.id as order_id, SUM(oi.quantity * mi.price) as total_revenue
+FROM order_table o
+JOIN order_item oi ON o.id = oi.order_id
+JOIN menu_item mi ON oi.menu_item_id = mi.id
+GROUP BY o.id;
 
--- Select all customers from the customer table
-SELECT * FROM customer;
+-- Select the customer who has placed the most orders
+SELECT c.name, COUNT(o.id) as num_orders
+FROM customer c
+JOIN order_table o ON c.id = o.customer_id
+GROUP BY c.name
+ORDER BY num_orders DESC
+LIMIT 1;
 
--- Select all orders from the order table
-SELECT * FROM order;
+-- Select the employee who has served the most orders
+SELECT e.name, COUNT(o.id) as num_orders
+FROM employee e
+JOIN order_table o ON e.id = o.employee_id
+GROUP BY e.name
+ORDER BY num_orders DESC
+LIMIT 1;
 
--- Select all menu items from the menu_item table
-SELECT * FROM menu_item;
+-- Select the menu items with their total quantity sold and revenue generated
+SELECT mi.name, SUM(oi.quantity) as total_quantity_sold, SUM(oi.quantity * mi.price) as total_revenue
+FROM menu_item mi
+JOIN order_item oi ON mi.id = oi.menu_item_id
+GROUP BY mi.name;
 
--- Select all order items from the order_item table
-SELECT * FROM order_item;
+-- Delete an order and its associated order items
+DELETE FROM order_table WHERE id = 3;
+DELETE FROM order_item WHERE order_id = 3;
 
--- Select all employees from the employee table:
-SELECT * FROM employee;
-
--- Select all orders placed by a specific customer:
-SELECT * FROM order WHERE customer_id = 1;
--- Group orders by month to see how many orders were placed in each month:
-SELECT MONTH(order_date) AS month, COUNT(*) AS num_orders
-FROM order
-GROUP BY month;
-
--- Select only those months where more than 100 orders were placed:
-SELECT MONTH(order_date) AS month, COUNT(*) AS num_orders
-FROM order
-GROUP BY month
-HAVING num_orders > 100;
-
--- Sort menu items by price from lowest to highest:
-SELECT * FROM menu_item ORDER BY price ASC;
-
--- Join the order and order item tables to see which menu items were ordered the most:
-SELECT menu_item.name, SUM(order_item.quantity) AS num_ordered
-FROM menu_item
-INNER JOIN order_item
-ON menu_item.id = order_item.menu_item_id
-GROUP BY menu_item.id
-ORDER BY num_ordered DESC;
-
--- Combine the results of a SELECT statement for dine-in orders with a SELECT statement for takeout orders:
-SELECT * FROM order WHERE order_type = 'dine-in'
-UNION
-SELECT * FROM order WHERE order_type = 'takeout';
-
--- Select all unique menu items ordered by customers:
-SELECT DISTINCT menu_item.name
-FROM menu_item
-INNER JOIN order_item
-ON menu_item.id = order_item.menu_item_id;
-
--- Create a view that shows all orders placed by a specific customer:
-CREATE VIEW customer_orders AS
-SELECT * FROM order WHERE customer_id = 1;
--- Most popular menu items
-SELECT menu_item.name, SUM(order_item.quantity) AS total_ordered
-FROM menu_item
-INNER JOIN order_item ON menu_item.id = order_item.menu_item_id
-GROUP BY menu_item.name
-ORDER BY total_ordered DESC
-LIMIT 2; -- limit results to top 2 items
-
--- Average order value
-SELECT AVG(total_price) AS average_order_value
-FROM (
-  SELECT order_id, SUM(quantity * price) AS total_price
-  FROM order_item
-  GROUP BY order_id
-) AS order_totals;
-
--- Order volume by day
-SELECT DATE(order.order_date) AS order_day, COUNT(*) AS order_count
-FROM order
-GROUP BY order_day
-ORDER BY order_day;
-
--- Employee performance
-SELECT employee.name, COUNT(DISTINCT order.employee_id) AS num_orders, AVG(total_price) AS avg_order_value
-FROM order
-INNER JOIN employee ON order.employee_id = employee.id
-INNER JOIN (
-  SELECT order_id, SUM(quantity * price) AS total_price
-  FROM order_item
-  GROUP BY order_id
-) AS order_totals ON order.id = order_totals.order_id
-GROUP BY employee.name
-ORDER BY num_orders DESC;
-
--- Customer retention
-SELECT COUNT(DISTINCT order.customer_id) AS num_customers
-FROM order
-WHERE DATE(order.order_date) BETWEEN '2022-01-01' AND '2022-12-31'; -- specify date range for analysis
-
-
+-- Update the hire date of an employee
+UPDATE employee SET hire_date = '2021-08-01' WHERE id = 3;
 -- Managers: Sales by Menu Item
 -- This report will show the sales of each menu item, ordered by the quantity sold and total revenue generated.
 -- It will help managers identify which items are popular among customers and adjust the menu accordingly.
@@ -238,59 +151,185 @@ SELECT o.order_id, o.rating, o.feedback
 FROM orders o;
 
 -- Investors: Financial Statements
--- This report will show the financial performance of the restaurant, including revenue, expenses, and profits. It will provide investors with an overview of the restaurant's financial health and performance
-CREATE VIEW financial_statements AS
-SELECT o.order_date AS date,
-       SUM(oi.quantity * mi.item_price) AS revenue,
-       SUM(e.salary) AS expenses,
-       SUM(oi.quantity * mi.item_price) - SUM(e.salary) AS profit
-FROM orders o
-JOIN order_item oi ON o.order_id = oi.order_id
-JOIN menu_item mi ON oi.item_id = mi.item_id
-JOIN employee e ON o.employee_id = e.employee_id
-GROUP BY o.order_date
-ORDER BY o.order_date;
--- Sales Trends: This report will show the sales trends over time, such as daily, weekly, or monthly sales. It will help investors identify whether the business is growing or declining and make informed decisions about future investments.
-CREATE VIEW sales_trends AS
-SELECT DATE_TRUNC('day', o.order_date) AS date,
-       SUM(oi.quantity * mi.item_price) AS revenue
-FROM orders o
-JOIN order_item oi ON o.order_id = oi.order_id
-JOIN menu_item mi ON oi.item_id = mi.item_id
-GROUP BY DATE_TRUNC('day', o.order_date)
-ORDER BY DATE_TRUNC('day', o.order_date);
--- Customer Satisfaction: This report will show customer satisfaction ratings, such as average ratings or ratings by customer, which can help investors assess the quality of the food and service and make decisions about future investments.
-CREATE VIEW customer_satisfaction AS
-SELECT c.first_name || ' ' || c.last_name AS customer_name,
-       AVG(o.rating) AS average_rating
-FROM orders o
-JOIN customer c ON o.customer_id = c.customer_id
-GROUP BY c.customer_id
-ORDER BY average_rating DESC;
--- Most Popular Menu Item
-SELECT mi.item_name AS most_popular_menu_item,
-       SUM(oi.quantity) AS total_orders
+-- This report will show the financial performance of the restaurant, including revenue, expenses, and profits. It
+-- Least Popular Menu Item
+SELECT mi.item_name AS least_popular_menu_item,
+SUM(oi.quantity) AS total_orders
 FROM order_item oi
 JOIN menu_item mi ON oi.item_id = mi.item_id
 GROUP BY mi.item_name
-ORDER BY total_orders DESC
+ORDER BY total_orders ASC
 LIMIT 1;
+
+-- Total Revenue by Territory
+SELECT t.territory_name,
+SUM(oi.quantity * mi.item_price) AS total_revenue
+FROM territory t
+JOIN restaurant r ON t.territory_id = r.territory_id
+JOIN orders o ON r.restaurant_id = o.restaurant_id
+JOIN order_item oi ON o.order_id = oi.order_id
+JOIN menu_item mi ON oi.item_id = mi.item_id
+GROUP BY t.territory_name
+ORDER BY total_revenue DESC;
+
+-- Total Revenue by Employee
+SELECT e.first_name || ' ' || e.last_name AS employee_name,
+SUM(oi.quantity * mi.item_price) AS total_revenue
+FROM employee e
+JOIN orders o ON e.employee_id = o.employee_id
+JOIN order_item oi ON o.order_id = oi.order_id
+JOIN menu_item mi ON oi.item_id = mi.item_id
+GROUP BY e.employee_id
+ORDER BY total_revenue DESC;
+
+-- Total Revenue by Customer
+SELECT c.first_name || ' ' || c.last_name AS customer_name,
+SUM(oi.quantity * mi.item_price) AS total_revenue
+FROM customer c
+JOIN orders o ON c.customer_id = o.customer_id
+JOIN order_item oi ON o.order_id = oi.order_id
+JOIN menu_item mi ON oi.item_id = mi.item_id
+GROUP BY c.customer_id
+ORDER BY total_revenue DESC;
+
+-- Total Revenue by Menu Item
+SELECT mi.item_name AS menu_item_name,
+SUM(oi.quantity * mi.item_price) AS total_revenue
+FROM menu_item mi
+JOIN order_item oi ON mi.item_id = oi.item_id
+GROUP BY mi.item_name
+ORDER BY total_revenue DESC;
+
+-- Total Revenue by Month
+SELECT DATE_TRUNC('month', o.order_date) AS month,
+SUM(oi.quantity * mi.item_price) AS total_revenue
+FROM orders o
+JOIN order_item oi ON o.order_id = oi.order_id
+JOIN menu_item mi ON oi.item_id = mi.item_id
+GROUP BY DATE_TRUNC('month', o.order_date)
+ORDER BY DATE_TRUNC('month', o.order_date);
+
+-- Total Revenue by Year
+SELECT DATE_TRUNC('year', o.order_date) AS year,
+SUM(oi.quantity * mi.item_price) AS total_revenue
+FROM orders o
+JOIN order_item oi ON o.order_id = oi.order_id
+JOIN menu_item mi ON oi.item_id = mi.item_id
+GROUP BY DATE_TRUNC('year', o.order_date)
+ORDER BY DATE_TRUNC('year', o.order_date);
+
+-- Total Expenses by Employee
+SELECT e.first_name || ' ' || e.last_name AS employee_name,
+SUM(e.salary) AS total_expenses
+FROM employee e
+GROUP BY e.employee_id
+ORDER BY total_expenses DESC;
+
+-- Average Order Value by Employee
+SELECT e.first_name || ' ' || e.last_name AS employee_name,
+AVG(oi.quantity * mi.item_price) AS avg_order_value
+FROM employee e
+JOIN orders o ON e.employee_id = o.employee_id
+JOIN order_item oi ON o.order_id = oi.order_id
+JOIN menu_item mi ON oi.item_id = mi.item_id
+GROUP BY e.employee_id
+ORDER BY avg_order_value DESC;
+
+-- Customer Satisfaction by Employee
+SELECT e.first_name || ' ' || e.last_name AS employee_name,
+AVG(o.rating) AS avg_customer_satisfaction
+FROM employee e
+JOIN orders o ON e.employee_id = o.employee_id
+GROUP BY e.employee_id
+ORDER BY avg_customer_satisfaction DESC;
+
+-- Total Orders by Day of Week
+SELECT TO_CHAR(o.order_date, 'Day') AS day_of_week,
+COUNT(o.order_id) AS total_orders
+FROM orders o
+GROUP BY TO_CHAR(o.order_date, 'Day')
+ORDER BY CASE
+WHEN TO_CHAR(o.order_date, 'Day') = 'Sunday' THEN 1
+WHEN TO_CHAR(o.order_date, 'Day') = 'Monday' THEN 2
+WHEN TO_CHAR(o.order_date, 'Day') = 'Tuesday' THEN 3
+WHEN TO_CHAR(o.order_date, 'Day') = 'Wednesday' THEN 4
+WHEN TO_CHAR(o.order_date, 'Day') = 'Thursday' THEN 5
+WHEN TO_CHAR(o.order_date, 'Day') = 'Friday' THEN 6
+WHEN TO_CHAR(o.order_date, 'Day') = 'Saturday' THEN 7
+ELSE 8
+END;
+
+-- Total Orders by Hour of Day
+SELECT EXTRACT(HOUR FROM o.order_date) AS hour_of_day,
+COUNT(o.order_id) AS total_orders
+FROM orders o
+GROUP BY EXTRACT(HOUR FROM o.order_date)
+ORDER BY EXTRACT(HOUR FROM o.order_date);
+
+-- Total Orders by Month
+SELECT TO_CHAR(o.order_date, 'Month') AS month,
+COUNT(o.order_id) AS total_orders
+FROM orders o
+GROUP BY TO_CHAR(o.order_date, 'Month')
+ORDER BY CASE
+WHEN TO_CHAR(o.order_date, 'Month') = 'January' THEN 1
+WHEN TO_CHAR(o.order_date, 'Month') = 'February' THEN 2
+WHEN TO_CHAR(o.order_date, 'Month') = 'March' THEN 3
+WHEN TO_CHAR(o.order_date, 'Month') = 'April' THEN 4
+WHEN TO_CHAR(o.order_date, 'Month') = 'May' THEN 5
+WHEN TO_CHAR(o.order_date, 'Month') = 'June' THEN 6
+WHEN TO_CHAR(o.order_date, 'Month') = 'July' THEN 7
+WHEN TO_CHAR(o.order_date, 'Month') = 'August' THEN 8
+WHEN TO_CHAR(o.order_date, 'Month') = 'September' THEN 9
+WHEN TO_CHAR(o.order_date, 'Month') = 'October' THEN 10
+WHEN TO_CHAR(o.order_date, 'Month') = 'November' THEN 11
+WHEN TO_CHAR(o.order_date, 'Month') = 'December' THEN 12
+ELSE 13
+END;
+
+-- Total Orders by Year
+SELECT DATE_TRUNC('year', o.order_date) AS year,
+COUNT(o.order_id) AS total_orders
+FROM orders o
+GROUP BY DATE_TRUNC('year', o.order_date)
+ORDER BY DATE_TRUNC('year', o.order_date);
+
+-- Total Orders by Territory
+SELECT t.territory_name,
+COUNT(o.order_id) AS total_orders
+FROM territory t
+JOIN restaurant r ON t.territory_id = r.territory_id
+JOIN orders o ON r.restaurant_id = o.restaurant_id
+GROUP BY t.territory_name
+ORDER BY total_orders DESC;
+
+-- Total Orders by Customer
+SELECT c.first_name || ' ' || c.last_name AS customer_name,
+COUNT(o.order_id) AS total_orders
+FROM customer c
+JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id
+ORDER BY total_orders DESC;
+
+-- Average Delivery Time by Territory
+SELECT t.territory_name,
+AVG(EXTRACT(EPOCH FROM (o.delivery_time - o.order_time)) / 60) AS avg_delivery
 
 -- Average Order Value for Dine-in and Takeout Orders
 SELECT o.order_type AS order_type,
-       AVG(oi.quantity * mi.item_price) AS average_order_value
+AVG(oi.quantity * mi.item_price) AS average_order_value
 FROM orders o
 JOIN order_item oi ON o.order_id = oi.order_id
 JOIN menu_item mi ON oi.item_id = mi.item_id
 GROUP BY o.order_type;
 
 -- Percentage of Upsold Orders
-SELECT (COUNT(*) FILTER (WHERE oi.quantity > 1) / COUNT(*)) * 100 AS percentage_upsold_orders
+SELECT (COUNT() FILTER (WHERE oi.quantity > 1) / COUNT()) * 100 AS percentage_upsold_orders
 FROM order_item oi;
 
 -- Busiest Month
 SELECT DATE_TRUNC('month', o.order_date) AS month,
-       COUNT(*) AS total_orders
+COUNT(*) AS total_orders
 FROM orders o
 GROUP BY month
 ORDER BY total_orders DESC
@@ -298,7 +337,7 @@ LIMIT 1;
 
 -- Employee with Most Hours Worked
 SELECT e.first_name || ' ' || e.last_name AS employee_name,
-       SUM(et.hours_worked) AS total_hours_worked
+SUM(et.hours_worked) AS total_hours_worked
 FROM employee e
 JOIN employee_timecard et ON e.employee_id = et.employee_id
 WHERE et.start_time >= DATE_TRUNC('month', CURRENT_DATE)
@@ -312,23 +351,24 @@ FROM orders;
 
 -- Investor Report
 SELECT SUM(oi.quantity * mi.item_price) AS total_revenue,
-       SUM(oi.quantity * mi.item_cost) AS total_expenses,
-       SUM(oi.quantity * mi.item_price) - SUM(oi.quantity * mi.item_cost) AS net_profit
+SUM(oi.quantity * mi.item_cost) AS total_expenses,
+SUM(oi.quantity * mi.item_price) - SUM(oi.quantity * mi.item_cost) AS net_profit
 FROM order_item oi
 JOIN menu_item mi ON oi.item_id = mi.item_id
 WHERE DATE_TRUNC('quarter', oi.order_date) = DATE_TRUNC('quarter', CURRENT_DATE);
 
 -- Employee Performance Report
 SELECT e.first_name || ' ' || e.last_name AS employee_name,
-       AVG(et.time_to_complete) AS average_time_to_complete
+AVG(et.time_to_complete) AS average_time_to_complete
 FROM employee e
 JOIN employee_timecard et ON e.employee_id = et.employee_id
 WHERE et.start_time >= DATE_TRUNC('month', CURRENT_DATE)
 GROUP BY e.employee_id
 ORDER BY average_time_to_complete ASC;
+
 -- Identify unpopular menu items
 SELECT mi.item_name AS unpopular_menu_item,
-       SUM(oi.quantity) AS total_orders
+SUM(oi.quantity) AS total_orders
 FROM order_item oi
 JOIN menu_item mi ON oi.item_id = mi.item_id
 GROUP BY mi.item_name
@@ -337,9 +377,9 @@ ORDER BY total_orders ASC;
 
 -- Identify order processing bottlenecks
 SELECT o.order_id,
-       o.order_date,
-       o.order_type,
-       TIMESTAMPDIFF(MINUTE, o.order_date, oi.ready_time) AS order_processing_time
+o.order_date,
+o.order_type,
+TIMESTAMPDIFF(MINUTE, o.order_date, oi.ready_time) AS order_processing_time
 FROM orders o
 JOIN order_item oi ON o.order_id = oi.order_id
 ORDER BY order_processing_time DESC;
@@ -352,16 +392,15 @@ WHERE oi.customer_id IN (SELECT customer_id FROM orders WHERE is_new_customer = 
 
 -- Identify most productive employees
 SELECT e.first_name || ' ' || e.last_name AS employee_name,
-       COUNT(*) AS total_orders
+COUNT(*) AS total_orders
 FROM employee e
 JOIN employee_timecard et ON e.employee_id = et.employee_id
 GROUP BY e.employee_id
 ORDER BY total_orders DESC;
 
 -- Calculate percentage of orders for takeout or delivery
-SELECT (COUNT(*) FILTER (WHERE o.order_type = 'takeout' OR o.order_type = 'delivery') / COUNT(*)) * 100 AS percentage_takeout_delivery_orders
+SELECT (COUNT() FILTER (WHERE o.order_type = 'takeout' OR o.order_type = 'delivery') / COUNT()) * 100 AS percentage_takeout_delivery_orders
 FROM orders o;
--- These insights can help the restaurant make data-driven decisions to optimize their menu, improve order processing times, increase marketing efforts, optimize employee schedules, and expand takeout and delivery options to improve operations, increase revenue, and provide better service to customers. Please note that the actual implementation of these actions may require additional considerations and may vary depending on the specific circumstances of the restaurant.
 
 -- Performance Metrics Before Optimization
 DECLARE @before_revenue DECIMAL(10,2) = 50000.00; -- Monthly revenue before optimization
@@ -388,23 +427,21 @@ DECLARE @customer_satisfaction_change DECIMAL(3,2) = @after_customer_satisfactio
 -- Calculate the change in order processing time
 DECLARE @order_processing_time_change INT = @before_order_processing_time - @after_order_processing_time;
 
--- Display the results
+-- Generate performance report
 PRINT 'Performance Metrics Before Optimization:';
 PRINT 'Monthly Revenue: $' + CAST(@before_revenue AS VARCHAR(10));
 PRINT 'Profit Margin: ' + CAST(@before_profit_margin AS VARCHAR(5)) + '%';
-PRINT 'Average Customer Satisfaction: ' + CAST(@before_customer_satisfaction AS VARCHAR(3)) + ' out of 5';
-PRINT 'Average Order Processing Time: ' + CAST(@before_order_processing_time AS VARCHAR(3)) + ' minutes';
-
+PRINT 'Average Customer Satisfaction: ' + CAST(@before_customer_satisfaction AS VARCHAR(3));
+PRINT 'Average Order Processing Time: ' + CAST(@before_order_processing_time AS VARCHAR(2)) + ' minutes';
+PRINT '';
 PRINT 'Performance Metrics After Optimization:';
 PRINT 'Monthly Revenue: $' + CAST(@after_revenue AS VARCHAR(10));
 PRINT 'Profit Margin: ' + CAST(@after_profit_margin AS VARCHAR(5)) + '%';
-PRINT 'Average Customer Satisfaction: ' + CAST(@after_customer_satisfaction AS VARCHAR(3)) + ' out of 5';
-PRINT 'Average Order Processing Time: ' + CAST(@after_order_processing_time AS VARCHAR(3)) + ' minutes';
-
-PRINT 'Change in Performance Metrics:';
-PRINT 'Change in Monthly Revenue: $' + CAST(@revenue_change AS VARCHAR(10));
-PRINT 'Change in Profit Margin: ' + CAST(@profit_margin_change AS VARCHAR(5)) + '%';
-PRINT 'Change in Customer Satisfaction: ' + CAST(@customer_satisfaction_change AS VARCHAR(3)) + ' out of 5';
-PRINT 'Change in Order Processing Time: ' + CAST(@order_processing_time_change AS VARCHAR(3)) + ' minutes';
+PRINT 'Average Customer Satisfaction: ' + CAST(@after_customer_satisfaction AS VARCHAR(3));
+PRINT 'Average Order Processing Time: ' + CAST(@after_order_processing_time AS VARCHAR(2)) + ' minutes';
+PRINT '';
+PRINT 'Change in Revenue: $' + CAST(@revenue_change AS VARCHAR(10));
 PRINT 'Percentage Change in Profit Margin: ' + CAST(@profit_margin_percentage_change AS VARCHAR(5)) + '%';
-
+PRINT 'Change in Customer Satisfaction: ' + CAST(@customer_satisfaction_change AS VARCHAR(3));
+PRINT 'Change in Order Processing Time: ' + CAST(@order_processing_time_change AS VARCHAR(2)) + ' minutes';
+GO
